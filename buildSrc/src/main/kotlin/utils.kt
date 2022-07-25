@@ -1,4 +1,3 @@
-
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.kotlin
@@ -16,6 +15,13 @@ fun Project.kotlinProject() {
         // Logging
         "implementation"("org.slf4j:slf4j-simple:1.7.30")
         "implementation"("io.github.microutils:kotlin-logging:1.7.8")
+
+        //JSON mapping
+        "implementation"("com.fasterxml.jackson.core:jackson-databind:2.13.3")
+        "implementation"("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.+")
+
+        //Kafka
+        "implementation"("org.apache.kafka:kafka-clients:3.2.0")
 
         // Mockk
         "testImplementation"("io.mockk:mockk:1.9.3")
