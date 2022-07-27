@@ -5,11 +5,21 @@
 package io.pleo.antaeus.core.services
 
 import io.pleo.antaeus.core.exceptions.InvoiceNotFoundException
+import io.pleo.antaeus.core.utils.calculateNextExecution
 import io.pleo.antaeus.data.AntaeusDal
+import io.pleo.antaeus.models.FailedInvoiceBilling
 import io.pleo.antaeus.models.Invoice
 import io.pleo.antaeus.models.InvoiceStatus
+import mu.KotlinLogging
+import java.time.OffsetDateTime
 
-class InvoiceService(private val dal: AntaeusDal) {
+
+class InvoiceService(
+    private val dal: AntaeusDal,
+) {
+
+    private val log = KotlinLogging.logger { }
+
     fun fetchAll(): List<Invoice> {
         return dal.fetchInvoices()
     }
@@ -18,16 +28,18 @@ class InvoiceService(private val dal: AntaeusDal) {
         return dal.fetchInvoice(id) ?: throw InvoiceNotFoundException(id)
     }
 
-//    fun markInvoiceAsPaid(invoice: Invoice) = dal.updateInvoice(invoice.id, InvoiceStatus.PAID)
-//    fun fetchInvoicesForBilling(): List<Invoice> {
-//
-//
-//
-//        //todo: find invoices.
-//        //if today's date is the first of the month, return Invoice with status PENDING and
-//        //orderBy createdAt where createdAt is within lastMonth
-//       //PAYMENT_FAIlED (where maxRetries has not been exceeded) in Batches ?
-//        //if not first of the month,
-//    }
+    fun fetchInvoicesForBilling(): List<Invoice> {
+        return dal.fetchInvoicesByStatus(InvoiceStatus.PENDING)
+    }
+
+    fun hasBeenPaid(invoice: Invoice): Boolean {
+        val inv = dal.fetchInvoice(invoice.id) ?: throw InvoiceNotFoundException(invoice.id)
+        return inv.status == InvoiceStatus.PAID
+    }
+
+    fun updateInvoicesStatus(invoices: List<Invoice>, status: InvoiceStatus) {
+        dal.updateInvoicesStatus(invoices, status)
+        log.info("process=updateInvoicesStatus, status=success, old={}, new={}", invoices.first().status, status)
+    }
 
 }
