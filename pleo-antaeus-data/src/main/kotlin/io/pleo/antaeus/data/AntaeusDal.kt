@@ -7,13 +7,10 @@
 
 package io.pleo.antaeus.data
 
-import io.pleo.antaeus.models.Currency
-import io.pleo.antaeus.models.Customer
-import io.pleo.antaeus.models.Invoice
-import io.pleo.antaeus.models.InvoiceStatus
-import io.pleo.antaeus.models.Money
+import io.pleo.antaeus.models.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.joda.time.Instant
 
 class AntaeusDal(private val db: Database) {
     fun fetchInvoice(id: Int): Invoice? {
@@ -35,6 +32,34 @@ class AntaeusDal(private val db: Database) {
         }
     }
 
+    fun fetchInvoicesByStatus(invoiceStatus: InvoiceStatus): List<Invoice> {
+        return transaction(db) {
+            InvoiceTable
+                .select { InvoiceTable.status eq invoiceStatus.toString() }
+                .orderBy(InvoiceTable.id, SortOrder.ASC)
+                .map { it.toInvoice() }
+        }
+    }
+
+    fun updateInvoicesStatus(invoices: List<Invoice>, status: InvoiceStatus) {
+        dbTransaction {
+            if (invoices.first().status == InvoiceStatus.PROCESSING && status == InvoiceStatus.PAID) {
+                invoices.forEach {
+                    InvoiceTable.update({ InvoiceTable.id eq it.id }) {
+                        it[this.status] = status.toString()
+                        it[this.paidAt] = Instant.now().millis
+                    }
+                }
+            } else {
+                invoices.forEach {
+                    InvoiceTable.update({ InvoiceTable.id eq it.id }) {
+                        it[this.status] = status.toString()
+                    }
+                }
+            }
+        }
+    }
+
     fun createInvoice(amount: Money, customer: Customer, status: InvoiceStatus = InvoiceStatus.PENDING): Invoice? {
         val id = transaction(db) {
             // Insert the invoice and returns its new id.
@@ -50,10 +75,15 @@ class AntaeusDal(private val db: Database) {
         return fetchInvoice(id)
     }
 
-    fun updateInvoice(id: Int, invoiceStatus: InvoiceStatus) {
+    fun markInvoiceAsPaid(id: Int) {
         transaction(db) {
             InvoiceTable.update({ InvoiceTable.id eq id }) {
-                it[this.status] = invoiceStatus.toString()
+                it[this.status] = InvoiceStatus.PAID.toString()
+                it[this.paidAt] = Instant.now().millis
+            }
+
+            FailedInvoicePaymentTable.deleteWhere {
+                FailedInvoicePaymentTable.invoiceId eq id
             }
         }
     }

@@ -1,26 +1,37 @@
 package io.pleo.antaeus.core.jobs
 
-import io.pleo.antaeus.core.event.BillInvoicePublisher
+import io.pleo.antaeus.core.event.EventPublisher
 import io.pleo.antaeus.core.services.InvoiceService
+import io.pleo.antaeus.core.utils.isFirstOfMonth
+import io.pleo.antaeus.models.Invoice
+import io.pleo.antaeus.models.InvoiceStatus
 import mu.KotlinLogging
+import java.util.*
 
-val logger = KotlinLogging.logger { }
+val log = KotlinLogging.logger { }
 
 class BillInvoiceJob(
     private val invoiceService: InvoiceService,
-    private val billInvoicePublisher: BillInvoicePublisher
-) {
+    private val eventPublisher: EventPublisher<Invoice>,
+) : TimerTask() {
 
-    //todo: run this on the first of the month at 12pm because of timezone(s), to process :
-    //todo unbilled invoice, failed invoice
-    //todo: this should run on only one instance
-    fun execute() {
-        //execute the job every day, only publish at the first of the month
-        invoiceService.fetchAll().forEach {
-            billInvoicePublisher.publish(it)
-            logger.info("Published message for invoice ${it.id} and status ${it.status}")
-            // update that it has been published
+    fun execute(localTesting: Boolean) {
+        if (!isFirstOfMonth() && !localTesting) {
+            log.info("process=BillInvoice, status=notExecuted, message=Current day is not first of month")
+            return
         }
+        //todo: use batch size here with sequence
+        val invoices = invoiceService.fetchInvoicesForBilling()
+        invoices.forEach { eventPublisher.publish(it) }
+
+        log.info(
+            "process=BillInvoice, status=success, message= ${invoices.size} pending-invoices event have been published"
+        )
+        invoiceService.updateInvoicesStatus(invoices, InvoiceStatus.PROCESSING)
+    }
+
+    override fun run() {
+        execute(false)
     }
 
 }

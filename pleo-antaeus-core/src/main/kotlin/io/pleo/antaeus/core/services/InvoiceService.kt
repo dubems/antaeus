@@ -5,13 +5,10 @@
 package io.pleo.antaeus.core.services
 
 import io.pleo.antaeus.core.exceptions.InvoiceNotFoundException
-import io.pleo.antaeus.core.utils.calculateNextExecution
 import io.pleo.antaeus.data.AntaeusDal
-import io.pleo.antaeus.models.FailedInvoiceBilling
 import io.pleo.antaeus.models.Invoice
 import io.pleo.antaeus.models.InvoiceStatus
 import mu.KotlinLogging
-import java.time.OffsetDateTime
 
 
 class InvoiceService(

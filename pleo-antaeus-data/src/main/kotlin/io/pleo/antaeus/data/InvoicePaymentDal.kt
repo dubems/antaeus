@@ -1,6 +1,6 @@
 package io.pleo.antaeus.data
 
-import io.pleo.antaeus.models.FailedInvoiceBilling
+import io.pleo.antaeus.models.FailedInvoicePayment
 import io.pleo.antaeus.models.Invoice
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -11,7 +11,7 @@ class InvoicePaymentDal(
     private val db: Database,
 ) {
 
-    fun fetchFailedInvoiceBilling(invoiceId: Int): FailedInvoiceBilling? {
+    fun fetchFailedInvoiceBilling(invoiceId: Int): FailedInvoicePayment? {
         return transaction(db) {
             FailedInvoicePaymentTable
                 .select { FailedInvoicePaymentTable.invoiceId eq invoiceId }
@@ -39,7 +39,7 @@ class InvoicePaymentDal(
         }
     }
 
-    fun saveFailedInvoiceBilling(failedInvoice: FailedInvoiceBilling) {
+    fun saveFailedInvoiceBilling(failedInvoice: FailedInvoicePayment) {
         transaction(db) {
             FailedInvoicePaymentTable.insert {
                 it[this.id] = UUID.randomUUID()

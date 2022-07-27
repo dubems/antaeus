@@ -3,7 +3,7 @@ package io.pleo.antaeus.core.services
 import io.pleo.antaeus.core.utils.calculateNextExecution
 import io.pleo.antaeus.data.InvoicePaymentDal
 import io.pleo.antaeus.data.dbTransaction
-import io.pleo.antaeus.models.FailedInvoiceBilling
+import io.pleo.antaeus.models.FailedInvoicePayment
 import io.pleo.antaeus.models.Invoice
 import io.pleo.antaeus.models.InvoiceStatus
 import mu.KotlinLogging
@@ -21,7 +21,7 @@ class InvoicePaymentService(
     }
 
     fun captureFailedInvoicePayment(invoice: Invoice, isRetryable: Boolean) {
-        val failedInvoice = fetchFailedInvoice(invoice) ?: FailedInvoiceBilling(
+        val failedInvoice = fetchFailedInvoice(invoice) ?: FailedInvoicePayment(
             invoiceId = invoice.id, failureCount = 0, nextExecution = OffsetDateTime.now(), isRetryable = isRetryable
         )
         with(failedInvoice) {
@@ -44,7 +44,7 @@ class InvoicePaymentService(
         return invoicePaymentDal.fetchRetryableFailedInvoice(MAX_PAYMENT_RETRIES)
     }
 
-    private fun fetchFailedInvoice(invoice: Invoice): FailedInvoiceBilling? {
+    private fun fetchFailedInvoice(invoice: Invoice): FailedInvoicePayment? {
         return invoicePaymentDal.fetchFailedInvoiceBilling(invoice.id)
     }
 }

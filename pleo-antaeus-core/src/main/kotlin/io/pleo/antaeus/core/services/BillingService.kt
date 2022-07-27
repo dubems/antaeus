@@ -1,59 +1,54 @@
 package io.pleo.antaeus.core.services
 
-import io.pleo.antaeus.core.exceptions.CurrencyMismatchException
-import io.pleo.antaeus.core.exceptions.CustomerNotFoundException
-import io.pleo.antaeus.core.exceptions.InsufficientBalanceException
-import io.pleo.antaeus.core.exceptions.NetworkException
+import io.pleo.antaeus.core.exceptions.*
+import io.pleo.antaeus.core.external.NotificationProvider
 import io.pleo.antaeus.core.external.PaymentProvider
+import io.pleo.antaeus.core.utils.retryer
 import io.pleo.antaeus.models.Invoice
 import mu.KotlinLogging
 
 class BillingService(
     private val paymentProvider: PaymentProvider,
-    private val invoiceService: InvoiceService
+    private val invoiceService: InvoiceService,
+    private val invoicePaymentService: InvoicePaymentService,
+    private val notificationProvider: NotificationProvider
 ) {
 
     private val logger = KotlinLogging.logger {}
 
-// TODO - Add code e.g. here
-    //have a cron job run every month, considering the cur and timezone and unpaid invoices and also failed attempt
-    //bill the customer using payment provider, then create an invoice about it
-    //capture the failures and retry using an exponential backoff adn with a max retry
-    //do not retry the payment with insufficient balances or when CustomerNotFoundException or CurrencyMismatchException is thrown
-    //only retry when there is a network exception. How do i retry ?
-    //notify/raise an alert for manual intervention
-    // add MDC logging
+    companion object {
+        private const val MAX_RETRIES = 3
+    }
 
-    //todo: enable concurrent processing with thread safe
-//    fun billInvoices(invoices: List<Invoice>) {
-//        //todo: use kotlin sequence to process the invoices in batches
-//        //todo: list concurrent processing as an improvement ?
-//        invoices.forEach { invoice ->
-//            //todo: Add MDC logging here
-//            logger.info { }
-//            billInvoice(invoice)
-//        }
-//    }
+    fun billInvoice(invoice: Invoice) {
+        try {
+            if (invoiceService.hasBeenPaid(invoice)) {
+                logger.warn(
+                    "process=billInvoice, status=warning, message=Invoice has been paid, invoiceId={}, customerId ={}",
+                    invoice.id, invoice.customerId
+                )
+                return
+            }
+            val isSuccessful = retryer(MAX_RETRIES, listOf(NetworkException())) { paymentProvider.charge(invoice) }
+            if (!isSuccessful) throw InsufficientBalanceException(invoice.customerId, invoice.id)
+            invoicePaymentService.markInvoiceAsPaid(invoice)
+        } catch (ex: CustomerNotFoundException) {
+            logger.error("process=billInvoice, status=error,  ex=${ex.message}")
+            handleFailedInvoiceBilling(invoice, false)
+        } catch (ex: CurrencyMismatchException) {
+            logger.error("process=billInvoice, status=error, ex=${ex.message}")
+            handleFailedInvoiceBilling(invoice, true)
+        } catch (ex: InsufficientBalanceException) {
+            logger.error("process=billInvoice, status=error, ex=${ex.message}")
+            handleFailedInvoiceBilling(invoice, true)
+        } catch (ex: InvoiceNotFoundException) {
+            logger.warn("process=billInvoice, status=warn ex=${ex.message}")
+            return
+        }
+    }
 
-//    private fun billInvoice(invoice: Invoice) {
-//        try {
-//
-//            val isSuccessful = paymentProvider.charge(invoice)
-//            if (!isSuccessful) throw InsufficientBalanceException(invoice.customerId, invoice.id)
-//            invoiceService.markInvoiceAsPaid(invoice)
-//
-//        } catch (ex: NetworkException) {
-//            //todo: does this need to be here?
-//        } catch (ex: CustomerNotFoundException) {
-//            //todo: handleNonRetryable and notify someone
-//
-//        } catch (ex: CurrencyMismatchException) {
-//            //todo: notify someone and save for retry
-//
-//        } catch (ex: InsufficientBalanceException) {
-//            //todo: notify someone and save for retry
-//
-//        }
-//    }
-
+    private fun handleFailedInvoiceBilling(invoice: Invoice, isRetryable: Boolean) {
+        notificationProvider.notifyAdmin()
+        invoicePaymentService.captureFailedInvoicePayment(invoice, isRetryable)
+    }
 }

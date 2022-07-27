@@ -13,13 +13,15 @@ import getPaymentProvider
 import io.pleo.antaeus.core.config.KafkaClientFactory
 import io.pleo.antaeus.core.event.BillInvoiceConsumer
 import io.pleo.antaeus.core.event.BillInvoicePublisher
+import io.pleo.antaeus.core.external.getNotificationProvider
 import io.pleo.antaeus.core.jobs.BillInvoiceJob
+import io.pleo.antaeus.core.jobs.EventConsumptionJob
+import io.pleo.antaeus.core.jobs.FailedInvoicePaymentJob
 import io.pleo.antaeus.core.services.BillingService
 import io.pleo.antaeus.core.services.CustomerService
+import io.pleo.antaeus.core.services.InvoicePaymentService
 import io.pleo.antaeus.core.services.InvoiceService
-import io.pleo.antaeus.data.AntaeusDal
-import io.pleo.antaeus.data.CustomerTable
-import io.pleo.antaeus.data.InvoiceTable
+import io.pleo.antaeus.data.*
 import io.pleo.antaeus.rest.AntaeusRest
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -30,13 +32,15 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import setupInitialData
 import java.io.File
 import java.sql.Connection
+import java.util.*
 
 fun main() {
     // The tables to create in the database.
-    val tables = arrayOf(InvoiceTable, CustomerTable)
+    val tables = arrayOf(InvoiceTable, CustomerTable, FailedInvoicePaymentTable)
 
     val dbFile: File = File.createTempFile("antaeus-db", ".sqlite")
     // Connect to the database and create the needed tables. Drop any existing data.
+    println("\"jdbc:sqlite:${dbFile.absolutePath}\"")
     val db = Database
         .connect(
             url = "jdbc:sqlite:${dbFile.absolutePath}",
@@ -57,6 +61,7 @@ fun main() {
 
     // Set up data access layer.
     val dal = AntaeusDal(db = db)
+    val invoicePaymentDal = InvoicePaymentDal(db = db)
 
     // Insert example data in the database.
     setupInitialData(dal = dal)
@@ -67,23 +72,39 @@ fun main() {
     // Create core services
     val invoiceService = InvoiceService(dal = dal)
     val customerService = CustomerService(dal = dal)
+    val invoicePaymentService = InvoicePaymentService(invoiceService, invoicePaymentDal)
 
     // This is _your_ billing service to be included where you see fit
-    val billingService = BillingService(paymentProvider = paymentProvider, invoiceService = invoiceService)
+    val billingService = BillingService(
+        paymentProvider = paymentProvider,
+        invoiceService = invoiceService,
+        notificationProvider = getNotificationProvider(),
+        invoicePaymentService = invoicePaymentService
+    )
     val kafkaClientFactory = KafkaClientFactory()
     val objectMapper = ObjectMapper().registerKotlinModule()
-    val producer = kafkaClientFactory.createProducer()
-    val billInvoicePublisher = BillInvoicePublisher(objectMapper,producer)
-    val billingJob = BillInvoiceJob(
-        invoiceService = invoiceService, billInvoicePublisher = billInvoicePublisher
+
+    val billInvoicePublisher = BillInvoicePublisher(objectMapper, kafkaClientFactory.createProducer())
+
+    val billInvoiceConsumer =
+        BillInvoiceConsumer(objectMapper, kafkaClientFactory.createConsumer(), billingService, invoiceService)
+
+
+    //setup KafkaEvent Consumption
+    val timer = Timer()
+    val eventConsumptionJob = EventConsumptionJob(billInvoiceConsumer)
+    timer.schedule(eventConsumptionJob, 0, 5000L) // 5 sec
+
+    val billInvoiceJob = BillInvoiceJob(invoiceService, billInvoicePublisher)
+    timer.schedule(billInvoiceJob, 0, 36000000L) //10 hours
+
+    val failedInvoiceBillingJob = FailedInvoicePaymentJob(
+        invoicePaymentService = invoicePaymentService, billingService = billingService
     )
-    val consumer = kafkaClientFactory.createConsumer()
-    val billInvoiceConsumer = BillInvoiceConsumer(objectMapper, consumer, billingService)
+    timer.schedule(failedInvoiceBillingJob, 0, 10000) // 1o sec, change back to 1 hr
 
-    val thread = Thread(billInvoiceConsumer)
-    thread.start()
-    billingJob.execute()
-
+    //to populate Kafka on startup for local development/testing
+    billInvoiceJob.execute(true)
 
     // Create REST web service
     AntaeusRest(
