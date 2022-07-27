@@ -13,16 +13,21 @@ class KafkaClientFactory {
 
     companion object {
         private const val BOOTSTRAP_SERVERS: String = "localhost:9092"
-        private const val GROUP_ID = "antaeus_consumer"
+        private const val GROUP_ID = "antaeus-consumer-group"
         const val KAFKA_TOPIC = "pending_invoices"
+        private const val MAX_POLL_RECORDS = 50
+        private const val MAX_SEND_RETRIES = 10000000
+        private const val AUTO_OFFSET_RESET = "earliest"
     }
 
     fun createProducer(): Producer<String, String> {
         val config = Properties()
         config["bootstrap.servers"] = BOOTSTRAP_SERVERS
+        config["message.send.max.retries"] = MAX_SEND_RETRIES
+        config["enable.idempotence"] = true //important to enable idempotent production of message into Kafka
         config["key.serializer"] = StringSerializer::class.java
         config["value.serializer"] = StringSerializer::class.java
-        return KafkaProducer<String, String>(config)
+        return KafkaProducer(config)
     }
 
     fun createConsumer(): Consumer<String, String> {
@@ -31,8 +36,8 @@ class KafkaClientFactory {
         props["key.deserializer"] = StringDeserializer::class.java
         props["value.deserializer"] = StringDeserializer::class.java
         props["group.id"] = GROUP_ID
-        props["auto.offset.reset"] = "earliest"
-        props["max.poll.records"] = 50
+        props["auto.offset.reset"] = AUTO_OFFSET_RESET
+        props["max.poll.records"] = MAX_POLL_RECORDS
         val consumer = KafkaConsumer<String, String>(props)
         consumer.subscribe(listOf(KAFKA_TOPIC))
         return consumer
