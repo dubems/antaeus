@@ -1,34 +1,34 @@
 package io.pleo.antaeus.core.event
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import io.pleo.antaeus.core.config.KafkaClientFactory
 import io.pleo.antaeus.core.services.BillingService
 import io.pleo.antaeus.models.Invoice
 import mu.KotlinLogging
 import org.apache.kafka.clients.consumer.Consumer
+import org.apache.kafka.clients.consumer.ConsumerRecords
 import java.time.Duration
 
-val logger = KotlinLogging.logger { }
+interface EventConsumer {
+    fun consume()
+}
+
+private const val POLL_TIMEOUT: Long = 3L
 
 class BillInvoiceConsumer(
     private val objectMapper: ObjectMapper,
     private val consumer: Consumer<String, String>,
     private val billingService: BillingService
-) : Runnable {
+) : EventConsumer {
 
-    private fun consume() {
-        while (true) {
-            logger.info("Starting message consumption...")
-            val records = consumer.poll(Duration.ofSeconds(3))
-            logger.info("Polled ${records.count()} records")
-            records.forEach {
-                val message = objectMapper.readValue<Invoice>(it.value(),Invoice::class.java)
-                logger.info("message amount is ${message.amount}")
-            }
+    private val log = KotlinLogging.logger { }
+
+    override fun consume() {
+        log.info("Starting message consumption...")
+        val records: ConsumerRecords<String, String> = consumer.poll(Duration.ofSeconds(POLL_TIMEOUT))
+        log.info("Polled ${records.count()} records")
+        records.forEach {
+            val invoice = objectMapper.readValue<Invoice>(it.value(), Invoice::class.java)
+            billingService.billInvoice(invoice)
         }
-    }
-
-    override fun run() {
-        consume()
     }
 }
