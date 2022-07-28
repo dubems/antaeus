@@ -75,19 +75,6 @@ class AntaeusDal(private val db: Database) {
         return fetchInvoice(id)
     }
 
-    fun markInvoiceAsPaid(id: Int) {
-        transaction(db) {
-            InvoiceTable.update({ InvoiceTable.id eq id }) {
-                it[this.status] = InvoiceStatus.PAID.toString()
-                it[this.paidAt] = Instant.now().millis
-            }
-
-            FailedInvoicePaymentTable.deleteWhere {
-                FailedInvoicePaymentTable.invoiceId eq id
-            }
-        }
-    }
-
     fun fetchCustomer(id: Int): Customer? {
         return transaction(db) {
             CustomerTable

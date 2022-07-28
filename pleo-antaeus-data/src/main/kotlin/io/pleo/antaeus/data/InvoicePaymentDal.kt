@@ -11,12 +11,12 @@ class InvoicePaymentDal(
     private val db: Database,
 ) {
 
-    fun fetchFailedInvoiceBilling(invoiceId: Int): FailedInvoicePayment? {
+    fun fetchFailedInvoicePayment(invoiceId: Int): FailedInvoicePayment? {
         return transaction(db) {
             FailedInvoicePaymentTable
                 .select { FailedInvoicePaymentTable.invoiceId eq invoiceId }
                 .firstOrNull()
-                ?.toFailedInvoiceBilling()
+                ?.toFailedInvoicePayment()
         }
     }
 
@@ -29,7 +29,8 @@ class InvoicePaymentDal(
                     InvoiceTable.currency,
                     InvoiceTable.value,
                     InvoiceTable.customerId,
-                    InvoiceTable.status
+                    InvoiceTable.status,
+                    InvoiceTable.paidAt
                 )
                 .select { FailedInvoicePaymentTable.isRetryable eq true }
                 .andWhere { FailedInvoicePaymentTable.nextExecution less Instant.now().millis }
@@ -39,7 +40,7 @@ class InvoicePaymentDal(
         }
     }
 
-    fun saveFailedInvoiceBilling(failedInvoice: FailedInvoicePayment) {
+    fun saveFailedInvoicePayment(failedInvoice: FailedInvoicePayment) {
         transaction(db) {
             FailedInvoicePaymentTable.insert {
                 it[this.id] = UUID.randomUUID()

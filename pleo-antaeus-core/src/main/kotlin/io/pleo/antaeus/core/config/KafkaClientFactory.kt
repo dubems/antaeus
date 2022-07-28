@@ -9,10 +9,9 @@ import org.apache.kafka.common.serialization.StringSerializer
 import java.util.*
 
 
-class KafkaClientFactory {
+class KafkaClientFactory(private val bootstrapServers: String) {
 
     companion object {
-        private const val BOOTSTRAP_SERVERS: String = "localhost:9092"
         private const val GROUP_ID = "antaeus-consumer-group"
         const val KAFKA_TOPIC = "pending_invoices"
         private const val MAX_POLL_RECORDS = 50
@@ -22,7 +21,7 @@ class KafkaClientFactory {
 
     fun createProducer(): Producer<String, String> {
         val config = Properties()
-        config["bootstrap.servers"] = BOOTSTRAP_SERVERS
+        config["bootstrap.servers"] = bootstrapServers
         config["message.send.max.retries"] = MAX_SEND_RETRIES
         config["enable.idempotence"] = true //important to enable idempotent production of message into Kafka
         config["key.serializer"] = StringSerializer::class.java
@@ -32,7 +31,7 @@ class KafkaClientFactory {
 
     fun createConsumer(): Consumer<String, String> {
         val props = Properties()
-        props["bootstrap.servers"] = BOOTSTRAP_SERVERS
+        props["bootstrap.servers"] = bootstrapServers
         props["key.deserializer"] = StringDeserializer::class.java
         props["value.deserializer"] = StringDeserializer::class.java
         props["group.id"] = GROUP_ID

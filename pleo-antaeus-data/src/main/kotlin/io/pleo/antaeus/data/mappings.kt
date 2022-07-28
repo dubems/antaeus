@@ -18,10 +18,11 @@ fun ResultRow.toInvoice(): Invoice = Invoice(
         currency = Currency.valueOf(this[InvoiceTable.currency])
     ),
     status = InvoiceStatus.valueOf(this[InvoiceTable.status]),
-    customerId = this[InvoiceTable.customerId]
+    customerId = this[InvoiceTable.customerId],
+    paidAt = getPaidAt(this[InvoiceTable.paidAt])
 )
 
-fun ResultRow.toFailedInvoiceBilling(): FailedInvoicePayment = FailedInvoicePayment(
+fun ResultRow.toFailedInvoicePayment(): FailedInvoicePayment = FailedInvoicePayment(
     invoiceId = this[FailedInvoicePaymentTable.invoiceId],
     failureCount = this[FailedInvoicePaymentTable.failureCount],
     nextExecution = OffsetDateTime.ofInstant(
@@ -32,9 +33,16 @@ fun ResultRow.toFailedInvoiceBilling(): FailedInvoicePayment = FailedInvoicePaym
     isRetryable = this[FailedInvoicePaymentTable.isRetryable]
 )
 
-fun ResultRow.toInvoiceId(): Int = this[FailedInvoicePaymentTable.invoiceId]
-
 fun ResultRow.toCustomer(): Customer = Customer(
     id = this[CustomerTable.id],
     currency = Currency.valueOf(this[CustomerTable.currency])
 )
+
+internal fun getPaidAt(paidAt: Long?): OffsetDateTime? {
+    return if (paidAt == null) paidAt
+    else OffsetDateTime.ofInstant(
+        Instant.ofEpochMilli(
+            paidAt
+        ), ZoneId.systemDefault()
+    )
+}

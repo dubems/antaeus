@@ -81,7 +81,7 @@ fun main() {
         notificationProvider = getNotificationProvider(),
         invoicePaymentService = invoicePaymentService
     )
-    val kafkaClientFactory = KafkaClientFactory()
+    val kafkaClientFactory = KafkaClientFactory("localhost:9092")
     val objectMapper = ObjectMapper().registerKotlinModule()
 
     val billInvoicePublisher = BillInvoicePublisher(objectMapper, kafkaClientFactory.createProducer())

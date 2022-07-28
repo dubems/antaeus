@@ -28,7 +28,7 @@ class InvoicePaymentService(
             failureCount = ++failureCount
             nextExecution = calculateNextExecution(failureCount)
         }
-        invoicePaymentDal.saveFailedInvoiceBilling(failedInvoice)
+        invoicePaymentDal.saveFailedInvoicePayment(failedInvoice)
         log.info("process=captureFailedInvoicePayment, status=success, invoiceId={}", invoice.id)
     }
 
@@ -45,6 +45,6 @@ class InvoicePaymentService(
     }
 
     private fun fetchFailedInvoice(invoice: Invoice): FailedInvoicePayment? {
-        return invoicePaymentDal.fetchFailedInvoiceBilling(invoice.id)
+        return invoicePaymentDal.fetchFailedInvoicePayment(invoice.id)
     }
 }

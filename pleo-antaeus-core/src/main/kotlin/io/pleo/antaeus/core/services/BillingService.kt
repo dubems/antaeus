@@ -11,7 +11,7 @@ class BillingService(
     private val paymentProvider: PaymentProvider,
     private val invoiceService: InvoiceService,
     private val invoicePaymentService: InvoicePaymentService,
-    private val notificationProvider: NotificationProvider
+    private val notificationProvider: NotificationProvider,
 ) {
 
     private val logger = KotlinLogging.logger {}
@@ -29,7 +29,8 @@ class BillingService(
                 )
                 return
             }
-            val isSuccessful = retryer(MAX_RETRIES, listOf(NetworkException())) { paymentProvider.charge(invoice) }
+            val isSuccessful =
+                retryer(MAX_RETRIES) { paymentProvider.charge(invoice) } //retry payment charge on NetworkException
             if (!isSuccessful) throw InsufficientBalanceException(invoice.customerId, invoice.id)
             invoicePaymentService.markInvoiceAsPaid(invoice)
         } catch (ex: CustomerNotFoundException) {
