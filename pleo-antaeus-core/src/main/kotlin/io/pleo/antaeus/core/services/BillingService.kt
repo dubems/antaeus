@@ -14,7 +14,7 @@ class BillingService(
     private val notificationProvider: NotificationProvider,
 ) {
 
-    private val logger = KotlinLogging.logger {}
+    private val log = KotlinLogging.logger {}
 
     companion object {
         private const val MAX_RETRIES = 3
@@ -23,7 +23,7 @@ class BillingService(
     fun billInvoice(invoice: Invoice) {
         try {
             if (invoiceService.hasBeenPaid(invoice)) {
-                logger.warn(
+                log.warn(
                     "process=billInvoice, status=warning, message=Invoice has been paid, invoiceId={}, customerId ={}",
                     invoice.id, invoice.customerId
                 )
@@ -34,16 +34,16 @@ class BillingService(
             if (!isSuccessful) throw InsufficientBalanceException(invoice.customerId, invoice.id)
             invoicePaymentService.markInvoiceAsPaid(invoice)
         } catch (ex: CustomerNotFoundException) {
-            logger.error("process=billInvoice, status=error,  ex=${ex.message}")
+            log.error("process=billInvoice, status=error,  ex=${ex.message}")
             handleFailedInvoiceBilling(invoice, false)
         } catch (ex: CurrencyMismatchException) {
-            logger.error("process=billInvoice, status=error, ex=${ex.message}")
+            log.error("process=billInvoice, status=error, ex=${ex.message}")
             handleFailedInvoiceBilling(invoice, true)
         } catch (ex: InsufficientBalanceException) {
-            logger.error("process=billInvoice, status=error, ex=${ex.message}")
+            log.error("process=billInvoice, status=error, ex=${ex.message}")
             handleFailedInvoiceBilling(invoice, true)
         } catch (ex: InvoiceNotFoundException) {
-            logger.warn("process=billInvoice, status=warn ex=${ex.message}")
+            log.warn("process=billInvoice, status=warn ex=${ex.message}")
             return
         }
     }
