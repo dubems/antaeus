@@ -96,20 +96,21 @@ Happy hacking 😁!
 The high level architecture overview is as follows
 * `BillInvoiceJob` Scheduler executes and publishes (at the first of every month) Invoice Billing Event to Kafka (For Invoice with PENDING status)
   * Scheduler updates the Invoice status for successful publishing to PROCESSING (to avoid republishing same twice)
-* Invoice Billing Event is consumed and Invoice is charged. If successful, the invoice status is updated to PAID and paidAt column is populated
+* Invoice Billing Event is consumed and Invoice is charged. If successful, the invoice status is updated to PAID and paidAt column is populated.
+
 If Invoice charge fails with either 
-  * `CurrencyMismatchException`, `InsufficientBalanceException`, an Admin notified, a `FailedInvoicePayment` entry is created and is scheduled for retry
-  * `CustomerNotFoundException`, an Admin is notified, a `FailedInvoicePayment` entry is created and is not scheduled for retry
+  * `CurrencyMismatchException`, `InsufficientBalanceException`, an Admin is notified, a `FailedInvoicePayment` entry is created and is scheduled for retry
+  * `CustomerNotFoundException`, an Admin is notified, a `FailedInvoicePayment` entry is created and is not scheduled for retry.
 * `FailedInvoicePaymentJob` Scheduler executes at a configurable interval, and charges the invoice. If successful, 
 InvoiceStatus is changed to PAID, paidAt is populated and `FailedInvoicePayment` is removed.
-  * If the invoice charge fails, it is re-scheduled using some exponential backoff with a configurable MAX_RETRY count
+  * If the invoice charge fails, it is re-scheduled using some exponential backoff with a configurable **MAX_RETRY** count
 
 
 ### Running
 
 To run the submission, execute the commands below in order.
 The command below would start up the Kafka container, kowl(for visiualising events sent to kafka which can be accessed
-at `localhost:8000`) and Zookeper using docker compose
+at `localhost:8080`) and Zookeper using docker compose
 
 ```
 docker compose up -d
@@ -123,13 +124,19 @@ If you use homebrew on MacOS `brew install sqlite`.
 ```
 
 It is also possible to also run Anataeus as a container along with the Kafka infrastructure, but I had some
-gradle-deamon issues and didn't want to spend much time, getting it to work
+gradle-deamon issues and didn't want to spend much time, getting it to work.
+
+To stop docker containers, run
+
+```
+docker compose down
+```
     
 ### Distributed System Considerations
 
 #### Kafka
 Event driven was used to de-couple to domain. Kafka was chosen to enable distributed processing of invoice charge. i:e 
-With multiple instances of Antaeus belonging to the same consumer group and am instance consuming from a partition, Kafka ensures a message
+With multiple instances of Antaeus belonging to the same consumer group and an instance consuming from a partition, Kafka ensures a message
 is sent to only one consumer.
 
 
@@ -139,7 +146,7 @@ should execute only on one Anataeus instance at a time.
 
 I provided a **dummy implementation** of the distributed scheduler lock (`LockProvider`) because I couldn't find a library to 
 do this. i:e Something like [Shedlock](https://github.com/lukas-krecan/ShedLock) for Spring, and I didn't want to expand the scope of the challenge. I 
-would implement it if I had more time
+would implement it if I had more time.
 
 #### Testing
 I have provided unit and Integration test for the submission. The Integration test starts up docker container using
@@ -161,4 +168,4 @@ In all, it was an interesting challenge ;)
 ### Other Libraries and dependencies
 * [Test-containers](https://www.testcontainers.org/) - For running Integration test in docker containers
 * [Awaitility](https://github.com/awaitility/awaitility) -  For Asynchronous testing expectation
-* [Kafka-clients]() - Interacting (publish & consuming) from kafka
+* [Kafka-clients](https://github.com/apache/kafka) - Interacting (publish & consuming) from kafka
