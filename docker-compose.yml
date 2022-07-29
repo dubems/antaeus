@@ -1,10 +1,6 @@
 version: "3"
 
 services:
-#  antaeus:
-#    build: .
-#    ports:
-#      - "7000:7000"
   zookeeper:
     image: 'bitnami/zookeeper:latest'
     ports:

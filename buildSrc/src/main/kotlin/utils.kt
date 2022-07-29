@@ -23,11 +23,6 @@ fun Project.kotlinProject() {
         //Kafka
         "implementation"("org.apache.kafka:kafka-clients:3.2.0")
 
-        //Distribued lock
-        "implementation"("net.javacrumbs.shedlock:shedlock-core:4.38.0")
-        "implementation"("net.javacrumbs.shedlock:shedlock-provider-jdbc-template:4.38.0")
-
-
         // Mockk
         "testImplementation"("io.mockk:mockk:1.9.3")
 

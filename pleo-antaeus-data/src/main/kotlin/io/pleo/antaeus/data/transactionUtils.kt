@@ -5,7 +5,7 @@ import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 
 /**
- * This is a 'hack' for having something similar to Propagation.REQUIRED as in SpringBoot
+ * This is a 'hack' for having something similar to Propagation.REQUIRED
  * I wasn't sure how to do it in Exposed of if the feature even exists
  */
 fun <T> dbTransaction(block: Transaction.() -> T): T {

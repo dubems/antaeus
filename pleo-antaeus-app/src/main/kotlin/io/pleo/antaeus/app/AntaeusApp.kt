@@ -95,13 +95,13 @@ fun main() {
     val eventConsumptionJob = EventConsumptionJob(billInvoiceConsumer)
     timer.schedule(eventConsumptionJob, 0, 5000L) // 5 sec
 
+    //setup event publisher scheduler
     val billInvoiceJob = BillInvoiceJob(invoiceService, billInvoicePublisher)
     timer.schedule(billInvoiceJob, 0, 36000000L) //10 hours
 
-    val failedInvoiceBillingJob = FailedInvoicePaymentJob(
-        invoicePaymentService = invoicePaymentService, billingService = billingService
-    )
-    timer.schedule(failedInvoiceBillingJob, 0, 10000) // 1o sec, change back to 1 hr
+    //setup failed invoice scheduler
+    val failedInvoiceBillingJob = FailedInvoicePaymentJob(invoicePaymentService, billingService)
+    timer.schedule(failedInvoiceBillingJob, 0, 3600000) //1 hr
 
     //to populate Kafka on startup for local development/testing
     billInvoiceJob.execute(true)

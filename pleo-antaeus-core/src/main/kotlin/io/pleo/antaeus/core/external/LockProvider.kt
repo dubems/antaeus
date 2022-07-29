@@ -1,16 +1,14 @@
-package io.pleo.antaeus.core.config
+package io.pleo.antaeus.core.external
 
-import net.javacrumbs.shedlock.provider.jdbctemplate.JdbcTemplateLockProvider
-import org.springframework.jdbc.core.JdbcTemplate
-import javax.sql.DataSource
+import mu.KotlinLogging
 
-class LockProvider {
-
-    fun lockProvider(dataSource: DataSource): JdbcTemplateLockProvider {
-        return JdbcTemplateLockProvider(
-            JdbcTemplateLockProvider.Configuration.builder()
-                .withJdbcTemplate(JdbcTemplate(dataSource))
-                .build()
-        )
-    }
+val log = KotlinLogging.logger { }
+fun acquireLock(process: String) {
+    log.info("acquire lock for process ={}", process)
 }
+
+fun releaseLock(process: String) {
+    log.info("release lock for process ={}", process)
+}
+
+
