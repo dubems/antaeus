@@ -40,7 +40,6 @@ fun main() {
 
     val dbFile: File = File.createTempFile("antaeus-db", ".sqlite")
     // Connect to the database and create the needed tables. Drop any existing data.
-    println("\"jdbc:sqlite:${dbFile.absolutePath}\"")
     val db = Database
         .connect(
             url = "jdbc:sqlite:${dbFile.absolutePath}",
